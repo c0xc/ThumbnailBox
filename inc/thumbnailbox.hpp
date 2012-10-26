@@ -12,6 +12,7 @@
 #include <QMap>
 #include <QPixmap>
 #include <QMouseEvent>
+#include <QMenu>
 
 class Thumb;
 
@@ -40,6 +41,30 @@ signals:
     void
     updated();
 
+    void
+    clicked(int index);
+
+    void
+    clicked(int index, const QPoint &pos);
+
+    void
+    rightClicked(int index);
+
+    void
+    rightClicked(int index, const QPoint &pos);
+
+    void
+    contextMenuRequested(const QPoint &pos);
+
+    void
+    menuItemSelected(QAction *action, const QString &item);
+
+    void
+    middleClicked(int index);
+
+    void
+    middleClicked(int index, const QPoint &pos);
+
 private:
 
     bool
@@ -66,11 +91,17 @@ private:
     QString
     _path;
 
+    int
+    _pixmaxwh;
+
     QMap<QString, QPixmap>
     _pixcache;
 
     QPixmap
     (*_pixsource)(QString);
+
+    QList<QAction*>
+    _actions;
 
     QWidget
     *thumbcontainer;
@@ -91,6 +122,9 @@ private slots:
 
     void
     resizeEvent(QResizeEvent *event);
+
+    void
+    showMenu(int index, const QPoint &pos);
 
 public:
 
@@ -121,6 +155,9 @@ public:
     int
     thumbWidth();
 
+    bool
+    isValidIndex(int index);
+
     int
     index();
 
@@ -147,6 +184,15 @@ public:
 
     bool
     itemsClickable();
+
+    void
+    addMenuItem(QAction *action);
+
+    void
+    removeMenuItem(QAction *action = 0);
+
+    bool
+    isMenuEnabled();
 
 public slots:
 
@@ -187,19 +233,28 @@ public slots:
     reload();
 
     bool
-    setList(const QStringList &paths);
+    setList(const QStringList &paths, int selected = -1);
 
     bool
-    navigateTo(const QString &path);
+    setList(const QStringList &paths, const QString &selected);
 
     bool
-    navigate2(QString path); //for cool people only
+    navigateTo(const QString &path, const QString &selected = "");
+
+    bool
+    navigate2(QString path, QString selected = ""); //for cool people only
 
     void
     setDirectoriesVisible(bool enable);
 
     void
     setItemsClickable(bool enable);
+
+    //If thumbnails are larger than 200px (with or height),
+    //this setting should be set to a higher value.
+    //Has no effect if an external pixmap source is set.
+    void
+    setPixMaxWH(int wh);
 
     //MOC says:
     //error: no matching function for call to
@@ -237,10 +292,28 @@ private:
     int
     index;
 
-signals:
+signals: //QPoint values are global
 
     void
     clicked(int index);
+
+    void
+    clicked(int index, const QPoint &pos);
+
+    void
+    rightClicked(int index);
+
+    void
+    rightClicked(int index, const QPoint &pos);
+
+    void
+    contextMenuRequested(const QPoint &pos);
+
+    void
+    middleClicked(int index);
+
+    void
+    middleClicked(int index, const QPoint &pos);
 
 };
 

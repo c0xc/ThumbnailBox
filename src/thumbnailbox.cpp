@@ -7,6 +7,7 @@ ThumbnailBox::ThumbnailBox(QWidget *parent)
               _size(.3),
               _showdirs(false),
               _isclickable(true),
+              _pixmaxwh(200),
               _pixsource(0),
               thumbarea(0)
 {
@@ -36,6 +37,10 @@ ThumbnailBox::ThumbnailBox(QWidget *parent)
 
     connect(this, SIGNAL(resized()), SLOT(updateThumbnails()));
 
+    connect(this,
+            SIGNAL(rightClicked(int, const QPoint&)),
+            SLOT(showMenu(int, const QPoint&)));
+
     updatetimer = new QTimer(this);
     updatetimer->setInterval(100);
     updatetimer->stop();
@@ -49,10 +54,35 @@ ThumbnailBox::resizeEvent(QResizeEvent *event)
     emit resized();
 }
 
+void
+ThumbnailBox::showMenu(int index, const QPoint &pos)
+{
+    if (!isMenuEnabled()) return;
+
+    QString item = itemPath(index);
+    if (item.isEmpty()) return;
+
+    QString title = QFileInfo(item).fileName();
+
+    QMenu menu;
+    QAction *action = new QAction(title, &menu);
+    QFont font = action->font();
+    font.setBold(true);
+    action->setFont(font);
+    action->setEnabled(false);
+    menu.addAction(action);
+    foreach (QAction *action, _actions)
+    {
+        menu.addAction(action);
+    }
+
+    emit menuItemSelected(menu.exec(pos), item);
+}
+
 QPixmap
 ThumbnailBox::getPixmap(QString file)
 {
-    int maxwh = 200; //Thumbs shouldn't be larger than this
+    int maxwh = _pixmaxwh; //Thumbs shouldn't be larger than this
 
     //Search cache
 
@@ -131,6 +161,12 @@ ThumbnailBox::thumbWidth()
     return width;
 }
 
+bool
+ThumbnailBox::isValidIndex(int index)
+{
+    return (index >= 0 && index < count());
+}
+
 int
 ThumbnailBox::index()
 {
@@ -150,7 +186,7 @@ ThumbnailBox::item(int index)
 {
     QFileInfo inf;
     if (index == -1) index = this->index();
-    if (index >= 0 && index < items().size()) inf = items().at(index);
+    if (isValidIndex(index)) inf = items().at(index);
     return inf;
 }
 
@@ -188,6 +224,29 @@ bool
 ThumbnailBox::itemsClickable()
 {
     return _isclickable;
+}
+
+void
+ThumbnailBox::addMenuItem(QAction *action)
+{
+    if (!action) return;
+    if (!_actions.contains(action))
+    {
+        _actions << action;
+    }
+}
+
+void
+ThumbnailBox::removeMenuItem(QAction *action)
+{
+    if (action) _actions.removeAll(action);
+    else _actions.clear();
+}
+
+bool
+ThumbnailBox::isMenuEnabled()
+{
+    return _actions.size();
 }
 
 void
@@ -281,6 +340,27 @@ ThumbnailBox::updateThumbnails()
             lbl->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
             vbox->addWidget(lbl);
             thumb->setLayout(vbox);
+            connect(thumb,
+                    SIGNAL(clicked(int)),
+                    SIGNAL(clicked(int)));
+            connect(thumb,
+                    SIGNAL(clicked(int, const QPoint&)),
+                    SIGNAL(clicked(int, const QPoint&)));
+            connect(thumb,
+                    SIGNAL(rightClicked(int)),
+                    SIGNAL(rightClicked(int)));
+            connect(thumb,
+                    SIGNAL(rightClicked(int, const QPoint&)),
+                    SIGNAL(rightClicked(int, const QPoint&)));
+            connect(thumb,
+                    SIGNAL(contextMenuRequested(const QPoint&)),
+                    SIGNAL(contextMenuRequested(const QPoint&)));
+            connect(thumb,
+                    SIGNAL(middleClicked(int)),
+                    SIGNAL(middleClicked(int)));
+            connect(thumb,
+                    SIGNAL(middleClicked(int, const QPoint&)),
+                    SIGNAL(middleClicked(int, const QPoint&)));
         }
         hbox_row->addStretch(1);
         vbox_rows->addLayout(hbox_row);
@@ -335,7 +415,9 @@ ThumbnailBox::setThumbWidth(int width)
 void
 ThumbnailBox::select(int index)
 {
-    if (index < 0 || index >= count()) index = -1;
+    if (!isEnabled()) return;
+
+    if (!isValidIndex(index)) index = -1;
     if (index == this->index()) return;
     _index = index;
     updateThumbnails();
@@ -383,11 +465,13 @@ ThumbnailBox::reload()
 }
 
 bool
-ThumbnailBox::setList(const QStringList &paths)
+ThumbnailBox::setList(const QStringList &paths, int selected)
 {
     clearCache();
 
+    _path.clear();
     _index = -1;
+    _index = selected;
 
     QFileInfoList &list = _list;
     list.clear();
@@ -408,7 +492,13 @@ ThumbnailBox::setList(const QStringList &paths)
 }
 
 bool
-ThumbnailBox::navigateTo(const QString &path)
+ThumbnailBox::setList(const QStringList &paths, const QString &selected)
+{
+    return setList(paths, paths.indexOf(selected));
+}
+
+bool
+ThumbnailBox::navigateTo(const QString &path, const QString &selected)
 {
     QDir dir(path);
     if (!dir.exists()) return false;
@@ -425,6 +515,8 @@ ThumbnailBox::navigateTo(const QString &path)
     if (_filter.size()) list = dir.entryInfoList(_filter, filter, flags);
     else list = dir.entryInfoList(filter, flags);
 
+    if (!selected.isEmpty()) _index = this->list().indexOf(selected);
+
     updateThumbnails();
 
     emit selectionChanged();
@@ -433,7 +525,7 @@ ThumbnailBox::navigateTo(const QString &path)
 }
 
 bool
-ThumbnailBox::navigate2(QString path)
+ThumbnailBox::navigate2(QString path, QString selected)
 {
     return navigateTo(path);
 }
@@ -452,6 +544,13 @@ ThumbnailBox::setItemsClickable(bool enable)
     _isclickable = enable;
 
     updateThumbnails();
+}
+
+void
+ThumbnailBox::setPixMaxWH(int wh)
+{
+    if (wh < 0) wh = 0; //Even 0 is nonsense
+    _pixmaxwh = wh;
 }
 
 void
@@ -488,6 +587,20 @@ void
 Thumb::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton)
-    emit clicked(index);
+    {
+        emit clicked(index);
+        emit clicked(index, event->globalPos());
+    }
+    else if (event->button() == Qt::RightButton)
+    {
+        emit rightClicked(index);
+        emit rightClicked(index, event->globalPos());
+        emit contextMenuRequested(event->globalPos());
+    }
+    else if (event->button() == Qt::MidButton)
+    {
+        emit middleClicked(index);
+        emit middleClicked(index, event->globalPos());
+    }
 }
 
