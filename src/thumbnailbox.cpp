@@ -420,7 +420,8 @@ ThumbnailBox::select(int index)
     if (!isValidIndex(index)) index = -1;
     if (index == this->index()) return;
     _index = index;
-    updateThumbnails();
+    //updateThumbnails(); //Segfault for no apparent reason
+    scheduleUpdateThumbnails();
 
     emit selectionChanged();
     if (index != -1)
