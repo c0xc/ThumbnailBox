@@ -345,6 +345,7 @@ ThumbnailBox::updateThumbnails()
     if (visiblethumbs > maxthumbs) visiblethumbs = maxthumbs;
     totalrows = count / cols; if (count % cols) totalrows++; //2.1 -> 3
     totalhiddenrows = totalrows - rows;
+    if (totalhiddenrows < 0) totalhiddenrows = 0;
 
     //Important:
     //Everytime an update is triggered,
