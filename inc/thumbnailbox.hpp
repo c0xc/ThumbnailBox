@@ -1,6 +1,7 @@
 #ifndef THUMBNAILBOX_HPP
 #define THUMBNAILBOX_HPP
 
+#include <QDebug>
 #include <QFrame>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -124,6 +125,9 @@ private slots:
     resizeEvent(QResizeEvent *event);
 
     void
+    wheelEvent(QWheelEvent *event);
+
+    void
     showMenu(int index, const QPoint &pos);
 
 public:
@@ -139,6 +143,18 @@ public:
 
     int
     availableHeight();
+
+    int
+    columnCount();
+
+    int
+    rowCount();
+
+    int
+    topRow();
+
+    int
+    bottomRow();
 
     QFileInfoList&
     items();
@@ -197,6 +213,9 @@ public:
 public slots:
 
     void
+    scrollToRow(int row);
+
+    void
     updateThumbnails();
 
     void
@@ -225,6 +244,9 @@ public slots:
 
     void
     selectNext();
+
+    void
+    ensureItemVisible(int index);
 
     void
     setNameFilter(QStringList filter);

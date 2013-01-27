@@ -37,6 +37,8 @@ ThumbnailBox::ThumbnailBox(QWidget *parent)
 
     connect(this, SIGNAL(resized()), SLOT(updateThumbnails()));
 
+    connect(this, SIGNAL(itemSelected(int)), SLOT(ensureItemVisible(int)));
+
     connect(this,
             SIGNAL(rightClicked(int, const QPoint&)),
             SLOT(showMenu(int, const QPoint&)));
@@ -52,6 +54,20 @@ ThumbnailBox::resizeEvent(QResizeEvent *event)
 {
     if (event->oldSize().isValid())
     emit resized();
+}
+
+void
+ThumbnailBox::wheelEvent(QWheelEvent *event)
+{
+    int degrees = event->delta() / 8;
+    int steps = degrees / 15;
+
+    if (event->orientation() != Qt::Vertical) return;
+    if (!scrollbar->isEnabled()) return;
+
+    scrollbar->setValue(scrollbar->value() - steps);
+
+    event->accept();
 }
 
 void
@@ -120,6 +136,43 @@ ThumbnailBox::availableHeight()
     return thumbcontainer->height();
 }
 
+int
+ThumbnailBox::columnCount()
+{
+    int cols;
+    int padding = 5;
+    int availablewidth = availableWidth();
+    int thumbsize = thumbWidth();
+    int thumbwidth = thumbsize;
+    cols = availablewidth / (thumbwidth + padding); //2.9 -> 2
+    return cols;
+}
+
+int
+ThumbnailBox::rowCount()
+{
+    int rows;
+    int padding = 5;
+    int availableheight = availableHeight();
+    int thumbsize = thumbWidth();
+    int thumbheight = thumbsize;
+    rows = availableheight / (thumbheight + padding); //2.9 -> 2
+    return rows;
+}
+
+int
+ThumbnailBox::topRow()
+{
+    int scrollpos = scrollbar->value();
+    return scrollpos;
+}
+
+int
+ThumbnailBox::bottomRow()
+{
+    return topRow() + (rowCount() - 1);
+}
+
 QFileInfoList&
 ThumbnailBox::items()
 {
@@ -157,6 +210,7 @@ ThumbnailBox::thumbWidth()
     int availablewidth = availableWidth();
     int width = availablewidth;
     width *= thumbSize();
+    if (width < 30) width = 30; //Should be a const
 
     return width;
 }
@@ -250,11 +304,17 @@ ThumbnailBox::isMenuEnabled()
 }
 
 void
+ThumbnailBox::scrollToRow(int row)
+{
+    scrollbar->setValue(row);
+}
+
+void
 ThumbnailBox::updateThumbnails()
 {
     int count = this->count(); //Total amount of files
-    int availablewidth = availableWidth();
-    int availableheight = availableHeight();
+    //int availablewidth = availableWidth();
+    //int availableheight = availableHeight();
     int thumbwidth;
     int thumbheight;
     int padding = 5;
@@ -276,8 +336,8 @@ ThumbnailBox::updateThumbnails()
     if (thumbwidth < 30) thumbwidth = 30;
     thumbheight = thumbwidth;
 
-    cols = availablewidth / (thumbwidth + padding); //2.9 -> 2
-    rows = availableheight / (thumbheight + padding); //2.9 -> 2
+    cols = columnCount(); //2.9 -> 2
+    rows = rowCount(); //2.9 -> 2
     if (!cols) cols = 1;
     if (!rows) rows = 1;
     maxthumbs = cols * rows;
@@ -450,6 +510,29 @@ ThumbnailBox::selectNext()
 }
 
 void
+ThumbnailBox::ensureItemVisible(int index)
+{
+    //Scroll to item, if out of viewport
+
+    if (index < 0 || index >= count()) return;
+    int col_count = columnCount();
+    int row_item = (double)index / (double)col_count;
+    int row_top = topRow();
+    int row_bottom = bottomRow();
+
+    if (row_item < row_top) //Item above viewport
+    {
+        //Make item row 2nd from top?
+        scrollToRow(row_item);
+    }
+    else if (row_item > row_bottom) //Item below viewport
+    {
+        //Make item row 2nd from bottom?
+        scrollToRow(row_item);
+    }
+}
+
+void
 ThumbnailBox::setNameFilter(QStringList filter)
 {
     _filter = filter;
@@ -504,6 +587,7 @@ ThumbnailBox::navigateTo(const QString &path, const QString &selected)
     QDir dir(path);
     if (!dir.exists()) return false;
     if (path == this->path()) return true;
+    _path = path;
 
     clearCache();
 
