@@ -116,9 +116,6 @@ private:
     QScrollBar
     *scrollbar;
 
-    QTimer
-    *updatetimer;
-
 private slots:
 
     void
@@ -222,7 +219,7 @@ public slots:
     updateThumbnails(int unused);
 
     void
-    scheduleUpdateThumbnails();
+    scheduleUpdateThumbnails(int timeout = 100);
 
     void
     setThumbSize(double percent);

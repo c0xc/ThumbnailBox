@@ -42,11 +42,6 @@ ThumbnailBox::ThumbnailBox(QWidget *parent)
     connect(this,
             SIGNAL(rightClicked(int, const QPoint&)),
             SLOT(showMenu(int, const QPoint&)));
-
-    updatetimer = new QTimer(this);
-    updatetimer->setInterval(100);
-    updatetimer->stop();
-    connect(updatetimer, SIGNAL(timeout()), SLOT(updateThumbnails()));
 }
 
 void
@@ -328,14 +323,17 @@ ThumbnailBox::updateThumbnails()
     int hiddenrows; //Rows hidden ABOVE viewport
     int hiddenthumbs; //Thumbs hidden ABOVE viewport
 
+    //Prevent second call
     if (updating_thumbnails) return;
     updating_thumbnails = true;
 
+    //Dimensions
     int thumbsize = thumbWidth();
     thumbwidth = thumbsize;
     if (thumbwidth < 30) thumbwidth = 30;
     thumbheight = thumbwidth;
 
+    //Numbers
     cols = columnCount(); //2.9 -> 2
     rows = rowCount(); //2.9 -> 2
     if (!cols) cols = 1;
@@ -354,20 +352,25 @@ ThumbnailBox::updateThumbnails()
     //This is important for large directories (> 1000 items),
     //because creating 1000 thumbs is inefficient/stupid/sigsegv.
 
-    if (thumbarea) delete thumbarea;
+    //Recreate thumbnail area
+    //The 2013 easter egg:
+    //if (thumbarea) delete thumbarea; //SIGSEGV (we found an easter egg)
+    if (thumbarea) thumbarea->hide();
+    if (thumbarea) thumbarea->deleteLater();
     thumbarea = new QWidget();
     thumbcontainerlayout->insertWidget(0, thumbarea);
     thumbarea->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
-    if (totalhiddenrows >= 0) scrollbar->setMaximum(totalhiddenrows);
     scrollbar->setPageStep(rows);
+    QVBoxLayout *vbox_rows = new QVBoxLayout;
+    thumbarea->setLayout(vbox_rows);
 
+    //Scrollbar position
+    if (totalhiddenrows >= 0) scrollbar->setMaximum(totalhiddenrows);
     scrollpos = scrollbar->value();
     hiddenrows = scrollpos;
     hiddenthumbs = hiddenrows * cols;
 
-    QVBoxLayout *vbox_rows = new QVBoxLayout;
-    thumbarea->setLayout(vbox_rows);
-
+    //Create thumbnails
     for (int i = 0; i < rows; i++)
     {
         QHBoxLayout *hbox_row = new QHBoxLayout;
@@ -428,8 +431,10 @@ ThumbnailBox::updateThumbnails()
     }
     vbox_rows->addStretch(1);
 
+    //Let the world know
     emit updated();
 
+    //Done
     updating_thumbnails = false;
 }
 
@@ -440,10 +445,10 @@ ThumbnailBox::updateThumbnails(int unused)
 }
 
 void
-ThumbnailBox::scheduleUpdateThumbnails()
+ThumbnailBox::scheduleUpdateThumbnails(int timeout)
 {
-    updatetimer->setSingleShot(true);
-    updatetimer->start();
+    if (timeout < 0) timeout = 0;
+    QTimer::singleShot(timeout, this, SLOT(updateThumbnails()));
 }
 
 void
@@ -481,8 +486,37 @@ ThumbnailBox::select(int index)
     if (!isValidIndex(index)) index = -1;
     if (index == this->index()) return;
     _index = index;
-    //updateThumbnails(); //Segfault for no apparent reason
-    scheduleUpdateThumbnails();
+
+    //The 2013 easter egg:
+    //We realize that closing the "File not found" message box
+    //after clicking on a non-existent thumbnail causes a SIGSEGV.
+    //So after one day of debugging, we trace the issue down to this
+    //function, where we found the following comment looking in our face:
+    ////updateThumbnails(); //Segfault for no apparent reason
+    //scheduleUpdateThumbnails();
+    //Courtesy of: 29bb83de2f97485b6e02ad9974833b6c151984e0
+    //Dated to: Fri Oct 26 21:55:44 2012 +0200
+    //That's 5 months old now!
+    //!@#$ !!! If something causes a crash, don't just put a timer in there,
+    //fix that **** !
+    //After increasing the timeout, it appears as if the crash would
+    //only occur if a message box is closed *after* the update has finished.
+    //So what does this mean?
+    //A thumbnail is clicked (QMouseEvent in the backtrace),
+    //this function schedules an update,
+    //another module shows a message box (which blocks that module),
+    //the update runs/finishes (recreating the view),
+    //the message box is closed and SIGSEGV.
+    //(_ZN11QMetaObject8activateEP7QObjectPKS_iPPv+0x69)
+    //All of this points to a signal/slot connection, featuring a pointer
+    //to some object in the view (which is recreated, remember?),
+    //which is held back while the message box is shown.
+    //Interestingly, the crash occurs within this function:
+    //Thumb::mousePressEvent(QMouseEvent *event)
+    //This function emits signals... Signals that belong to thumbnails...
+    //Thumbnails that have been DELETEd by the update function!!!
+    //Happy easter everyone!
+    updateThumbnails();
 
     emit selectionChanged();
     if (index != -1)
@@ -672,6 +706,10 @@ Thumb::setIndex(int index)
 void
 Thumb::mousePressEvent(QMouseEvent *event)
 {
+    //The 2013 easter egg:
+    //It (SIGSEGV) is triggered by those signals,
+    //because the widgets have been deleted by the update function.
+
     if (event->button() == Qt::LeftButton)
     {
         emit clicked(index);
@@ -688,5 +726,6 @@ Thumb::mousePressEvent(QMouseEvent *event)
         emit middleClicked(index);
         emit middleClicked(index, event->globalPos());
     }
+    event->accept();
 }
 
