@@ -95,6 +95,12 @@ private:
     int
     _pixmaxwh;
 
+    QMap<int, QColor>
+    _colors;
+
+    QMap<QString, int>
+    _file_colors;
+
     QMap<QString, QPixmap>
     _pixcache;
 
@@ -206,6 +212,24 @@ public:
 
     bool
     isMenuEnabled();
+
+    void
+    undefineColors();
+
+    void
+    defineColor(QColor color, int number = 1);
+
+    void
+    clearColors(int number = 0);
+
+    void
+    setFileColor(QString file, int color = 1);
+
+    void
+    setFileColors(QStringList files, int color = 1);
+
+    QColor
+    fileColor(QString file);
 
 public slots:
 

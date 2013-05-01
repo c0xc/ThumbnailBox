@@ -299,6 +299,64 @@ ThumbnailBox::isMenuEnabled()
 }
 
 void
+ThumbnailBox::undefineColors()
+{
+    _colors.clear();
+}
+
+void
+ThumbnailBox::defineColor(QColor color, int number)
+{
+    if (!number) return;
+    _colors[number] = color;
+}
+
+void
+ThumbnailBox::clearColors(int number)
+{
+    if (!number)
+    {
+        _file_colors.clear();
+    }
+    else
+    {
+        foreach (QString file, _file_colors.keys(number))
+        {
+            _file_colors.remove(file);
+        }
+    }
+}
+
+void
+ThumbnailBox::setFileColor(QString file, int color)
+{
+    if (!color) _file_colors.remove(file);
+    else _file_colors[file] = color;
+}
+
+void
+ThumbnailBox::setFileColors(QStringList files, int color)
+{
+    clearColors(color);
+    foreach (QString file, files)
+    {
+        setFileColor(file, color);
+    }
+}
+
+QColor
+ThumbnailBox::fileColor(QString file)
+{
+    QColor color;
+    if (_file_colors.contains(file))
+    {
+        int number = _file_colors[file];
+        if (_colors.contains(number)) color = _colors[number];
+    }
+    return color;
+}
+
+void
 ThumbnailBox::scrollToRow(int row)
 {
     scrollbar->setValue(row);
@@ -394,6 +452,14 @@ ThumbnailBox::updateThumbnails()
             if (absindex == index) thumb->setFrameShadow(QFrame::Sunken);
             thumb->setLineWidth(2);
             thumb->setToolTip(title);
+            QColor clr_bg = fileColor(itemPath(absindex));
+            if (clr_bg.isValid())
+            {
+                thumb->setAutoFillBackground(true);
+                QPalette palette = thumb->palette();
+                palette.setColor(QPalette::Window, clr_bg);
+                thumb->setPalette(palette);
+            }
             hbox_row->addWidget(thumb);
             QVBoxLayout *vbox = new QVBoxLayout;
             QLabel *lbl = new QLabel();
