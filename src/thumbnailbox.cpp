@@ -382,6 +382,18 @@ ThumbnailBox::scrollToRow(int row)
 }
 
 void
+ThumbnailBox::scrollToTop()
+{
+    scrollbar->setValue(0);
+}
+
+void
+ThumbnailBox::scrollToBottom()
+{
+    scrollbar->setValue(scrollbar->maximum());
+}
+
+void
 ThumbnailBox::updateThumbnails()
 {
     int count = this->count(); //Total amount of files
@@ -399,6 +411,9 @@ ThumbnailBox::updateThumbnails()
     int scrollpos;
     int hiddenrows; //Rows hidden ABOVE viewport
     int hiddenthumbs; //Thumbs hidden ABOVE viewport
+
+    //Prevent update when disabled (loading)
+    if (!isEnabled()) return;
 
     //Prevent second call
     if (updating_thumbnails) return;
@@ -665,6 +680,9 @@ ThumbnailBox::setList(const QStringList &paths, int selected)
 {
     clearCache();
 
+    setEnabled(false);
+    scrollToTop(); //not updating because disabled
+
     _path.clear();
     _index = -1;
     _index = selected;
@@ -680,6 +698,7 @@ ThumbnailBox::setList(const QStringList &paths, int selected)
         list << inf;
     }
 
+    setEnabled(true);
     updateThumbnails();
 
     emit selectionChanged();
@@ -721,6 +740,9 @@ ThumbnailBox::navigateTo(const QString &path, const QString &selected)
 
     clearCache();
 
+    setEnabled(false);
+    scrollToTop(); //not updating because disabled
+
     _index = -1;
 
     QFileInfoList &list = _list;
@@ -732,6 +754,7 @@ ThumbnailBox::navigateTo(const QString &path, const QString &selected)
 
     if (!selected.isEmpty()) _index = this->list().indexOf(selected);
 
+    setEnabled(true);
     updateThumbnails();
 
     emit selectionChanged();

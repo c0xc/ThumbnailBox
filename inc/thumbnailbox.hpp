@@ -237,6 +237,12 @@ public slots:
     scrollToRow(int row);
 
     void
+    scrollToTop();
+
+    void
+    scrollToBottom();
+
+    void
     updateThumbnails();
 
     void
