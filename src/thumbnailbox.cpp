@@ -91,7 +91,7 @@ ThumbnailBox::showMenu(int index, const QPoint &pos)
 }
 
 QPixmap
-ThumbnailBox::getPixmap(QString file)
+ThumbnailBox::getPixmap(const QString &file)
 {
     int maxwh = _pixmaxwh; //Thumbs shouldn't be larger than this
 
@@ -121,18 +121,21 @@ ThumbnailBox::clearCache()
 
 int
 ThumbnailBox::availableWidth()
+const
 {
     return thumbcontainer->width();
 }
 
 int
 ThumbnailBox::availableHeight()
+const
 {
     return thumbcontainer->height();
 }
 
 int
 ThumbnailBox::columnCount()
+const
 {
     int cols;
     int padding = 5;
@@ -145,6 +148,7 @@ ThumbnailBox::columnCount()
 
 int
 ThumbnailBox::rowCount()
+const
 {
     int rows;
     int padding = 5;
@@ -157,6 +161,7 @@ ThumbnailBox::rowCount()
 
 int
 ThumbnailBox::topRow()
+const
 {
     int scrollpos = scrollbar->value();
     return scrollpos;
@@ -164,23 +169,21 @@ ThumbnailBox::topRow()
 
 int
 ThumbnailBox::bottomRow()
+const
 {
     return topRow() + (rowCount() - 1);
 }
 
-QFileInfoList&
+QFileInfoList
 ThumbnailBox::items()
+const
 {
-    QFileInfoList &list(_list);
-    for (int i = list.size(); --i >= 0 && !directoriesVisible();)
-    {
-        if (list[i].isDir()) list.removeAt(i);
-    }
-    return list;
+    return _list;
 }
 
 QStringList
 ThumbnailBox::list()
+const
 {
     QStringList paths;
     foreach (QFileInfo inf, items()) paths << inf.absoluteFilePath();
@@ -189,18 +192,21 @@ ThumbnailBox::list()
 
 int
 ThumbnailBox::count()
+const
 {
     return items().size();
 }
 
 double
 ThumbnailBox::thumbSize()
+const
 {
     return _size;
 }
 
 int
 ThumbnailBox::thumbWidth()
+const
 {
     int availablewidth = availableWidth();
     int width = availablewidth;
@@ -212,26 +218,31 @@ ThumbnailBox::thumbWidth()
 
 bool
 ThumbnailBox::isValidIndex(int index)
+const
 {
     return (index >= 0 && index < count());
 }
 
 int
 ThumbnailBox::index()
+const
 {
-    if (_index < 0) _index = -1;
-    if (_index >= list().size()) _index = -1;
-    return _index;
+    int index = _index;
+    if (index < 0) index = -1;
+    if (index >= list().size()) index = -1;
+    return index;
 }
 
 bool
 ThumbnailBox::isSelected()
+const
 {
     return (index() != -1);
 }
 
 QFileInfo
 ThumbnailBox::item(int index)
+const
 {
     QFileInfo inf;
     if (index == -1) index = this->index();
@@ -241,36 +252,42 @@ ThumbnailBox::item(int index)
 
 QString
 ThumbnailBox::itemPath(int index)
+const
 {
     return item(index).absoluteFilePath();
 }
 
 bool
 ThumbnailBox::isFirst()
+const
 {
     return (index() == 0);
 }
 
 bool
 ThumbnailBox::isLast()
+const
 {
     return (index() == count() - 1);
 }
 
 QString
 ThumbnailBox::path()
+const
 {
     return _path;
 }
 
 bool
 ThumbnailBox::directoriesVisible()
+const
 {
     return _showdirs;
 }
 
 bool
 ThumbnailBox::itemsClickable()
+const
 {
     return _isclickable;
 }
@@ -294,6 +311,7 @@ ThumbnailBox::removeMenuItem(QAction *action)
 
 bool
 ThumbnailBox::isMenuEnabled()
+const
 {
     return _actions.size();
 }
@@ -305,7 +323,7 @@ ThumbnailBox::undefineColors()
 }
 
 void
-ThumbnailBox::defineColor(QColor color, int number)
+ThumbnailBox::defineColor(const QColor &color, int number)
 {
     if (!number) return;
     _colors[number] = color;
@@ -328,14 +346,14 @@ ThumbnailBox::clearColors(int number)
 }
 
 void
-ThumbnailBox::setFileColor(QString file, int color)
+ThumbnailBox::setFileColor(const QString &file, int color)
 {
     if (!color) _file_colors.remove(file);
     else _file_colors[file] = color;
 }
 
 void
-ThumbnailBox::setFileColors(QStringList files, int color)
+ThumbnailBox::setFileColors(const QStringList &files, int color)
 {
     clearColors(color);
     foreach (QString file, files)
@@ -345,7 +363,8 @@ ThumbnailBox::setFileColors(QStringList files, int color)
 }
 
 QColor
-ThumbnailBox::fileColor(QString file)
+ThumbnailBox::fileColor(const QString &file)
+const
 {
     QColor color;
     if (_file_colors.contains(file))
@@ -634,19 +653,11 @@ ThumbnailBox::ensureItemVisible(int index)
 }
 
 void
-ThumbnailBox::setNameFilter(QStringList filter)
+ThumbnailBox::setNameFilter(const QStringList &filter)
 {
     _filter = filter;
 
     reload();
-}
-
-void
-ThumbnailBox::reload()
-{
-    QString path = this->path();
-    _path.clear();
-    navigateTo(path);
 }
 
 bool
@@ -682,6 +693,24 @@ ThumbnailBox::setList(const QStringList &paths, const QString &selected)
     return setList(paths, paths.indexOf(selected));
 }
 
+void
+ThumbnailBox::clear()
+{
+    setList(QStringList());
+}
+
+void
+ThumbnailBox::refresh()
+{
+    QFileInfoList &list(_list);
+    for (int i = list.size(); --i >= 0;)
+    {
+        if (!list[i].exists()) list.removeAt(i);
+        if (!list[i].isFile() && !directoriesVisible()) list.removeAt(i);
+    }
+    updateThumbnails();
+}
+
 bool
 ThumbnailBox::navigateTo(const QString &path, const QString &selected)
 {
@@ -711,9 +740,19 @@ ThumbnailBox::navigateTo(const QString &path, const QString &selected)
 }
 
 bool
-ThumbnailBox::navigate2(QString path, QString selected)
+ThumbnailBox::navigate2(const QString &path, const QString &selected)
 {
     return navigateTo(path);
+}
+
+void
+ThumbnailBox::reload()
+{
+    //Reload directory
+
+    QString path = this->path();
+    _path.clear();
+    navigateTo(path);
 }
 
 void
@@ -740,7 +779,7 @@ ThumbnailBox::setPixMaxWH(int wh)
 }
 
 void
-ThumbnailBox::setPixmapSource(QPixmap(*pixsource)(QString))
+ThumbnailBox::setPixmapSource(QPixmap(*pixsource)(const QString&))
 {
     _pixsource = pixsource;
 }

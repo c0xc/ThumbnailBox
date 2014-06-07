@@ -105,7 +105,7 @@ private:
     _pixcache;
 
     QPixmap
-    (*_pixsource)(QString);
+    (*_pixsource)(const QString&);
 
     QList<QAction*>
     _actions;
@@ -136,73 +136,73 @@ private slots:
 public:
 
     QPixmap
-    getPixmap(QString file);
+    getPixmap(const QString &file);
 
     void
     clearCache();
 
     int
-    availableWidth();
+    availableWidth() const;
 
     int
-    availableHeight();
+    availableHeight() const;
 
     int
-    columnCount();
+    columnCount() const;
 
     int
-    rowCount();
+    rowCount() const;
 
     int
-    topRow();
+    topRow() const;
 
     int
-    bottomRow();
+    bottomRow() const;
 
-    QFileInfoList&
-    items();
+    QFileInfoList
+    items() const;
 
     QStringList
-    list();
+    list() const;
 
     int
-    count();
+    count() const;
 
     double
-    thumbSize();
+    thumbSize() const;
 
     int
-    thumbWidth();
+    thumbWidth() const;
 
     bool
-    isValidIndex(int index);
+    isValidIndex(int index) const;
 
     int
-    index();
+    index() const;
 
     bool
-    isSelected();
+    isSelected() const;
 
     QFileInfo
-    item(int index = -1);
+    item(int index = -1) const;
 
     QString
-    itemPath(int index = -1);
+    itemPath(int index = -1) const;
 
     bool
-    isFirst();
+    isFirst() const;
 
     bool
-    isLast();
+    isLast() const;
 
     QString
-    path();
+    path() const;
 
     bool
-    directoriesVisible();
+    directoriesVisible() const;
 
     bool
-    itemsClickable();
+    itemsClickable() const;
 
     void
     addMenuItem(QAction *action);
@@ -211,25 +211,25 @@ public:
     removeMenuItem(QAction *action = 0);
 
     bool
-    isMenuEnabled();
+    isMenuEnabled() const;
 
     void
     undefineColors();
 
     void
-    defineColor(QColor color, int number = 1);
+    defineColor(const QColor &color, int number = 1);
 
     void
     clearColors(int number = 0);
 
     void
-    setFileColor(QString file, int color = 1);
+    setFileColor(const QString &file, int color = 1);
 
     void
-    setFileColors(QStringList files, int color = 1);
+    setFileColors(const QStringList &files, int color = 1);
 
     QColor
-    fileColor(QString file);
+    fileColor(const QString &file) const;
 
 public slots:
 
@@ -270,10 +270,7 @@ public slots:
     ensureItemVisible(int index);
 
     void
-    setNameFilter(QStringList filter);
-
-    void
-    reload();
+    setNameFilter(const QStringList &filter);
 
     bool
     setList(const QStringList &paths, int selected = -1);
@@ -281,11 +278,20 @@ public slots:
     bool
     setList(const QStringList &paths, const QString &selected);
 
+    void
+    clear();
+
+    void
+    refresh();
+
     bool
     navigateTo(const QString &path, const QString &selected = "");
 
     bool
-    navigate2(QString path, QString selected = ""); //for cool people only
+    navigate2(const QString &path, const QString &selected = "");
+
+    void
+    reload();
 
     void
     setDirectoriesVisible(bool enable);
@@ -306,7 +312,7 @@ public slots:
     //‘QPixmap (*)(QString)’
     #if !defined(Q_MOC_RUN)
     void
-    setPixmapSource(QPixmap(*pixsource)(QString));
+    setPixmapSource(QPixmap(*pixsource)(const QString&));
     #endif
 
     void
