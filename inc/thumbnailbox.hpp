@@ -1,6 +1,8 @@
 #ifndef THUMBNAILBOX_HPP
 #define THUMBNAILBOX_HPP
 
+#include <cassert>
+
 #include <QDebug>
 #include <QFrame>
 #include <QVBoxLayout>
@@ -14,14 +16,25 @@
 #include <QPixmap>
 #include <QMouseEvent>
 #include <QMenu>
+#include <QCache>
+#include <QPointer>
 
-class Thumb;
+namespace ThumbnailBoxComponents { class Thumb; }
 
 class ThumbnailBox : public QFrame
 {
     Q_OBJECT
 
 public:
+
+    enum class SourceType
+    {
+        Local,
+        LoaderFunction,
+        External
+    };
+
+    typedef ThumbnailBoxComponents::Thumb Thumb;
 
     ThumbnailBox(QWidget *parent);
 
@@ -66,7 +79,16 @@ signals:
     void
     middleClicked(int index, const QPoint &pos);
 
+    void
+    imageRequested(const QString &path);
+
+    void
+    imageCached(const QString &path = "");
+
 private:
+
+    QPalette
+    _original_palette;
 
     bool
     updating_thumbnails;
@@ -74,14 +96,11 @@ private:
     int
     _index;
 
-    QFileInfoList
+    QStringList
     _list;
 
     double
     _size;
-
-    QStringList
-    _filter;
 
     bool
     _showdirs;
@@ -89,11 +108,8 @@ private:
     bool
     _isclickable;
 
-    QString
-    _path;
-
-    int
-    _pixmaxwh;
+    QSize
+    _max_cache_pix_dimensions;
 
     QMap<int, QColor>
     _colors;
@@ -101,11 +117,14 @@ private:
     QMap<QString, int>
     _file_colors;
 
-    QMap<QString, QPixmap>
+    QCache<QString, QImage>
     _pixcache;
 
-    QPixmap
-    (*_pixsource)(const QString&);
+    SourceType
+    _source_type;
+
+    QImage
+    (*_image_loader_function)(const QString&);
 
     QList<QAction*>
     _actions;
@@ -116,30 +135,14 @@ private:
     QHBoxLayout
     *thumbcontainerlayout;
 
-    QWidget
-    *thumbarea;
+    QPointer<QWidget>
+    thumbarea;
 
     QScrollBar
     *scrollbar;
 
-private slots:
-
-    void
-    resizeEvent(QResizeEvent *event);
-
-    void
-    wheelEvent(QWheelEvent *event);
-
-    void
-    showMenu(int index, const QPoint &pos);
-
-public:
-
-    QPixmap
-    getPixmap(const QString &file);
-
-    void
-    clearCache();
+    QMap<int, QPointer<Thumb>>
+    _visible_thumbnails_in_viewport;
 
     int
     availableWidth() const;
@@ -159,8 +162,54 @@ public:
     int
     bottomRow() const;
 
-    QFileInfoList
-    items() const;
+    double
+    thumbSize() const;
+
+    int
+    thumbWidth() const;
+
+    QList<int>
+    visibleIndexes() const;
+
+    QPointer<Thumb>
+    thumbAtIndex(int index) const;
+
+    QColor
+    fileColor(const QString &file) const;
+
+    QImage
+    cachedImage(const QString &file) const;
+
+    QPixmap
+    cachedPixmap(const QString &file) const;
+
+    void
+    requestImage(const QString &path);
+
+private slots:
+
+    void
+    resizeEvent(QResizeEvent *event);
+
+    void
+    wheelEvent(QWheelEvent *event);
+
+    void
+    showMenu(int index, const QPoint &pos);
+
+    void
+    updateThumbnail(int index);
+
+    void
+    updateThumbnail(const QString &file);
+
+public:
+
+    SourceType
+    sourceType() const;
+
+    QImage
+    shrinkImage(const QImage &original_image) const;
 
     QStringList
     list() const;
@@ -168,14 +217,11 @@ public:
     int
     count() const;
 
-    double
-    thumbSize() const;
-
-    int
-    thumbWidth() const;
-
     bool
     isValidIndex(int index) const;
+
+    int
+    indexOf(const QString &file) const;
 
     int
     index() const;
@@ -183,11 +229,11 @@ public:
     bool
     isSelected() const;
 
-    QFileInfo
-    item(int index = -1) const;
-
     QString
     itemPath(int index = -1) const;
+
+    QString
+    itemTitle(int index = -1) const;
 
     bool
     isFirst() const;
@@ -195,23 +241,40 @@ public:
     bool
     isLast() const;
 
-    QString
-    path() const;
-
     bool
     directoriesVisible() const;
 
     bool
     itemsClickable() const;
 
+    bool
+    isMenuEnabled() const;
+
+public slots:
+
+    void
+    setFrame(int style = QFrame::Panel | QFrame::Sunken);
+
+    void
+    setBackground(const QColor &color);
+
+    void
+    setDarkBackground(bool dark = true);
+
+    void
+    setPreviewSizeLimit(int wh);
+
+    void
+    setItemsClickable(bool enable);
+
+    void
+    setCacheLimit(int max_mb);
+
     void
     addMenuItem(QAction *action);
 
     void
     removeMenuItem(QAction *action = 0);
-
-    bool
-    isMenuEnabled() const;
 
     void
     undefineColors();
@@ -228,10 +291,11 @@ public:
     void
     setFileColors(const QStringList &files, int color = 1);
 
-    QColor
-    fileColor(const QString &file) const;
+    void
+    clearCache();
 
-public slots:
+    void
+    cacheImage(const QString &file, const QImage &image);
 
     void
     scrollToRow(int row);
@@ -261,7 +325,7 @@ public slots:
     setThumbWidth(int width);
 
     void
-    select(int index);
+    select(int index, bool send_signal = true);
 
     void
     unselect();
@@ -275,42 +339,6 @@ public slots:
     void
     ensureItemVisible(int index);
 
-    void
-    setNameFilter(const QStringList &filter);
-
-    bool
-    setList(const QStringList &paths, int selected = -1);
-
-    bool
-    setList(const QStringList &paths, const QString &selected);
-
-    void
-    clear();
-
-    void
-    refresh();
-
-    bool
-    navigateTo(const QString &path, const QString &selected = "");
-
-    bool
-    navigate2(const QString &path, const QString &selected = "");
-
-    void
-    reload();
-
-    void
-    setDirectoriesVisible(bool enable);
-
-    void
-    setItemsClickable(bool enable);
-
-    //If thumbnails are larger than 200px (with or height),
-    //this setting should be set to a higher value.
-    //Has no effect if an external pixmap source is set.
-    void
-    setPixMaxWH(int wh);
-
     //MOC says:
     //error: no matching function for call to
     //‘ThumbnailBox::setPixmapSource(QPixmap&)’
@@ -318,36 +346,35 @@ public slots:
     //‘QPixmap (*)(QString)’
     #if !defined(Q_MOC_RUN)
     void
-    setPixmapSource(QPixmap(*pixsource)(const QString&));
+    setImageSource(QImage(*loader)(const QString&));
     #endif
 
     void
-    setPixmapSource();
+    clear();
+
+    bool
+    setList(const QStringList &paths, int selected,
+        SourceType type = SourceType::Local);
+
+    bool
+    setList(const QStringList &paths, SourceType type = SourceType::Local);
+
+    bool
+    setList(const QStringList &paths, const QString &selected,
+        SourceType type);
+
+    #if !defined(Q_MOC_RUN)
+    bool
+    setList(const QStringList &remote_paths, QImage(*loader)(const QString&));
+    #endif
 
 };
 
-class Thumb : public QFrame
+class ThumbnailBoxComponents::Thumb : public QFrame
 {
     Q_OBJECT
 
-public:
-    
-    Thumb(QWidget *parent = 0);
-
-    void
-    setIndex(int index);
-
-protected:
-
-    void
-    mousePressEvent(QMouseEvent *event);
-
-private:
-
-    int
-    index;
-
-signals: //QPoint values are global
+signals:
 
     void
     clicked(int index);
@@ -369,6 +396,34 @@ signals: //QPoint values are global
 
     void
     middleClicked(int index, const QPoint &pos);
+
+public:
+    
+    Thumb(int index, QWidget *parent = 0);
+
+public slots:
+
+    void
+    setPixmap(const QPixmap &preview);
+
+    void
+    setTitle(const QString &title);
+
+protected:
+
+    void
+    mousePressEvent(QMouseEvent *event);
+
+private:
+
+    int
+    index;
+
+    QLabel
+    *lbl_preview;
+
+    QLabel
+    *lbl_title;
 
 };
 

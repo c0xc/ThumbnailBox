@@ -1,31 +1,38 @@
 ThumbnailBox
 ============
 
-This is just a simple thumbnail widget.
-Additional features will be added as necessary.
-
-Example usage:
-//...
-ThumbnailBox thumbnailbox = new ThumbnailBox(this);
-thumbnailbox->setNameFilter(QStringList() << "*.jpg" << "*.bmp");
-thumbnailbox->navigateTo(path);
-connect(txt_pathbox,
-        SIGNAL(textEdited(const QString&)),
-        thumbnailbox,
-        SLOT(navigateTo(const QString&)));
-//...
-
-Notes:
-* The wheel only works right above the scrollbar.
-  This will probably be fixed some day (or maybe not).
-* For non-picture file, a text-only thumbnail will be shown
-  (in other words, no preview image).
-* This thing really doesn't do much. It's just a box with thumbnails.
+This is a simple Qt widget that shows thumbnails.
 
 
 
----
+Example
+-------
 
-Philip Seeger
-philip@philip-seeger.de
+    QStringList image_files = ...;
+    ThumbnailBox thumbnailbox = new ThumbnailBox(this);
+    thumbnailbox->setNameFilter(QStringList() << "*.jpg" << "*.bmp");
+    thumbnailbox->setList(image_files);
+    connect(thumbnailbox,
+            SIGNAL(itemSelected(const QString&)),
+            SLOT(doSomethingUseful(const QString&)));
+    //...
+
+
+
+Notes
+-----
+
+This module was written for Qt 4.8.
+
+This thing really doesn't do much. It's just a box with thumbnails.
+
+
+
+License
+-------
+
+Please see the file called LICENSE.
+
+
+
 
